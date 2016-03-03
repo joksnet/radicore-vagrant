@@ -1,0 +1,71 @@
+---
+
+- hosts: all
+
+  vars:
+    apache_vhost: |
+      <VirtualHost *:80>
+        DocumentRoot /vagrant
+        <Directory /vagrant>
+          Require all granted
+        </Directory>
+        <Files ~ "\.inc$">
+          Require all denied
+        </Files>
+        <IfModule mod_php5.c>
+          php_value include_path ".:/vagrant/includes/"
+          php_value default_charset "UTF-8"
+          php_value mbstring.internal_encoding "UTF-8"
+          php_value register_globals 0
+          php_value magic_quotes_gpc 0
+          php_value magic_quotes_runtime 0
+          php_value magic_quotes_sybase 0
+          php_value session.use_cookies 1
+          php_value session.use_only_cookies 0
+          php_value session.use_trans_sid 1
+          php_value session.gc_maxlifetime 14400
+          php_value session.cookie_httponly 1
+          php_value arg_separator.output "&amp;"
+          php_value url_rewriter.tags "a=href,area=href,frame=src,input=src,fieldset="
+          php_value always_populate_raw_post_data -1
+        </IfModule>
+      </VirtualHost>
+    radicore_subsystems: [menu, dict, audit, workflow]
+
+  tasks:
+    - apt: update_cache=true
+
+    # PHP
+    - apt_repository: repo="ppa:ondrej/php5"
+    - apt: name={{ item }} update_cache=true state=latest
+      with_items: [php5, php5-cli, php5-mysql, php5-xsl, libapache2-mod-php5]
+
+    # MySQL
+    - apt: name={{ item }} state=present
+      with_items: [mysql-server, mysql-client, python-mysqldb]
+    - service: name=mysql state=started enabled=true
+
+    # Apache
+    - apt: name=apache2 state=present
+    - file: path=/etc/apache2/sites-enabled/000-default.conf state=absent
+    - lineinfile: dest=/etc/apache2/envvars regexp=APACHE_RUN_USER line="export APACHE_RUN_USER=vagrant"
+    - lineinfile: dest=/etc/apache2/envvars regexp=APACHE_RUN_GROUP line="export APACHE_RUN_GROUP=vagrant"
+    - copy: content={{ apache_vhost }} dest=/etc/apache2/sites-enabled/000-default.conf
+    - service: name=apache2 state=restarted enabled=true
+
+    # Radicore
+    - file: path=/vagrant/{{ item }} mode=0775 state=directory
+      with_items: [classes, error_logs, logs, sql, text, xsl]
+    - command: cp /vagrant/includes/config.inc.default /vagrant/includes/config.inc
+    - lineinfile: dest=/vagrant/includes/config.inc regexp="\$GLOBALS\['dbusername'\]" line="$GLOBALS['dbusername'] = 'root';"
+    - lineinfile: dest=/vagrant/includes/config.inc regexp="\$GLOBALS\['dbuserpass'\]" line="$GLOBALS['dbuserpass'] = '';"
+    - lineinfile: dest=/vagrant/includes/config.inc regexp="\$GLOBALS\['dbprefix'\]" line="$GLOBALS['dbprefix'] = null;"
+    - mysql_db: name={{ item }} state=present
+      with_items: "{{ radicore_subsystems }}"
+    - mysql_db: name={{ item }} target=/vagrant/{{ item }}/sql/mysql/{{ item }}-schema.sql state=import
+      with_items: "{{ radicore_subsystems }}"
+    - mysql_db: name={{ item }} target=/vagrant/{{ item }}/sql/mysql/{{ item }}-data.sql state=import
+      with_items: "{{ radicore_subsystems | difference(['audit']) }}"
+    - mysql_db: name=menu target=/vagrant/menu/sql/mysql/mnu-user.sql state=import
+      run_once: true
+
