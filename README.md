@@ -17,4 +17,4 @@ environment.
 1. [Download Radicore](http://www.radicore.org/downloads.php) lastest version (tested with 1.93.0),
 1. Unzip into root of `radicore-vagrant` folder,
 1. Run `vagrant up` and cross your fingers,
-1. Open http://192.168.17.25/ on your browser.
+1. Open http://192.168.17.35/ on your browser.
