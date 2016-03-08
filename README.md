@@ -15,6 +15,6 @@ environment.
 
 1. Clone this project with ```git clone https://github.com/joksnet/radicore-vagrant.git``` or download and unzip,
 1. [Download Radicore](http://www.radicore.org/downloads.php) lastest version (tested with 1.93.0),
-1. Unzip into `radicore-vagrant` folder; if you unzip it and then move it's contents you might be missing hidden files,
-1. Run `vagrant up` and cross your fingers.
+1. Unzip into root of `radicore-vagrant` folder,
+1. Run `vagrant up` and cross your fingers,
 1. Open http://192.168.17.25/ on your browser.
